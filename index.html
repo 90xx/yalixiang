@@ -194,10 +194,22 @@
       const randomIndex = Math.floor(Math.random() * validDisks.length);
       const selected = validDisks[randomIndex];
 
-      const shareUrl = (item.kkm || item.bdm || item.ucm || item.xlm || item.ydm)
-        && typeof (item.kkm || item.bdm || item.ucm || item.xlm || item.ydm) === 'string'
-        && (item.kkm || item.bdm || item.ucm || item.xlm || item.ydm).startsWith('http')
-        ? (item.kkm || item.bdm || item.ucm || item.xlm || item.ydm) : null;
+      // 如果是 lz，收集所有有效的分享页链接
+      let shareUrl = null;
+      if (selected.type === 'lz') {
+        const validSharePages = CODE_FIELDS
+          .filter(field => item[field] && typeof item[field] === 'string' && item[field].trim() !== '' && item[field].startsWith('http'))
+          .map(field => item[field]);
+
+        if (validSharePages.length > 0) {
+          // 随机选一个分享页链接
+          const randomShareIndex = Math.floor(Math.random() * validSharePages.length);
+          shareUrl = validSharePages[randomShareIndex];
+        }
+      } else {
+        // 如果不是 lz，就不需要分享页链接
+        shareUrl = null;
+      }
 
       return [{
         mainType: selected.type,
