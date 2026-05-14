@@ -178,50 +178,33 @@
     let currentListType = null;
     const ITEMS_PER_PAGE = 20;
 
-    // ✅ 重写：返回 1 个随机项（支持蓝奏直链 + 分享页链接）
+    // ✅ 修正版：返回 1 个随机项，并附带蓝奏和分享页信息
     function getRandomValidLinks(item) {
-      // 收集普通网盘（不含 lz）
-      const otherDisks = NET_DISK_FIELDS
-        .filter(field => field !== 'lz')
+      const validDisks = NET_DISK_FIELDS
         .filter(field => item[field] && typeof item[field] === 'string' && item[field].trim() !== '' && item[field].startsWith('http'))
         .map(field => ({
-          type: 'normal',
+          type: field === 'lz' ? 'lz' : 'normal',
           field,
           name: NET_DISK_NAMES[field] || field.toUpperCase(),
           url: item[field]
         }));
 
-      // 收集分享页链接（kkm, bdm 等，必须是 URL）
-      const shareLinks = CODE_FIELDS
-        .filter(field => item[field] && typeof item[field] === 'string' && item[field].trim() !== '' && item[field].startsWith('http'))
-        .map(field => ({
-          type: 'share',
-          name: '提取码',
-          url: item[field],
-          label: `${NET_DISK_NAMES[field.replace('m', '') || ''] || '其他'}分享页`
-        }));
+      if (validDisks.length === 0) return [];
 
-      // 蓝奏直链
-      const lzUrl = item.lz;
-      if (lzUrl && typeof lzUrl === 'string' && lzUrl.trim() !== '' && lzUrl.startsWith('http')) {
-        otherDisks.push({
-          type: 'lz',
-          name: '蓝奏',
-          url: lzUrl
-        });
-      }
+      const randomIndex = Math.floor(Math.random() * validDisks.length);
+      const selected = validDisks[randomIndex];
 
-      const candidates = [...otherDisks, ...shareLinks];
-      if (candidates.length === 0) return [];
-
-      const randomIndex = Math.floor(Math.random() * candidates.length);
-      const selected = candidates[randomIndex];
+      const shareUrl = (item.kkm || item.bdm || item.ucm || item.xlm || item.ydm)
+        && typeof (item.kkm || item.bdm || item.ucm || item.xlm || item.ydm) === 'string'
+        && (item.kkm || item.bdm || item.ucm || item.xlm || item.ydm).startsWith('http')
+        ? (item.kkm || item.bdm || item.ucm || item.xlm || item.ydm) : null;
 
       return [{
-        type: selected.type,
-        displayText: selected.name,
-        url: selected.url,
-        label: selected.label
+        mainType: selected.type,
+        mainText: selected.name,
+        mainUrl: selected.url,
+        hasLz: !!item.lz && typeof item.lz === 'string' && item.lz.trim() !== '' && item.lz.startsWith('http'),
+        shareUrl: shareUrl
       }];
     }
 
@@ -384,20 +367,9 @@
 
           if (links.length > 0) {
             const link = links[0];
-            if (link.type === 'lz') {
-              // 蓝奏直链
-              html += `<a href="${link.url}" target="_blank" class="block mt-1 text-green-600">${link.displayText}</a>`;
-              // 同时显示分享页链接（如果存在）
-              const shareUrl = item.kkm || item.bdm || item.ucm || item.xlm || item.ydm;
-              if (shareUrl && typeof shareUrl === 'string' && shareUrl.startsWith('http')) {
-                html += `<a href="${shareUrl}" target="_blank" class="block mt-1 text-blue-600">提取码: ${shareUrl}</a>`;
-              }
-            } else if (link.type === 'share') {
-              // 直接是分享页
-              html += `<a href="${link.url}" target="_blank" class="block mt-1 text-blue-600">${link.displayText}: ${link.url}</a>`;
-            } else {
-              // 普通网盘
-              html += `<a href="${link.url}" target="_blank" class="block mt-1 text-green-600">${link.displayText}</a>`;
+            html += `<a href="${link.mainUrl}" target="_blank" class="block mt-1 text-green-600">${link.mainText}</a>`;
+            if (link.hasLz && link.mainType === 'lz' && link.shareUrl) {
+              html += `<a href="${link.shareUrl}" target="_blank" class="block mt-1 text-blue-600">提取码: ${link.shareUrl}</a>`;
             }
           } else {
             html += `<p class="text-gray-500 mt-1">暂无有效链接</p>`;
@@ -506,16 +478,9 @@
 
           if (links.length > 0) {
             const link = links[0];
-            if (link.type === 'lz') {
-              html += `<a href="${link.url}" target="_blank" class="block mt-2 text-green-600">${link.displayText}</a>`;
-              const shareUrl = item.kkm || item.bdm || item.ucm || item.xlm || item.ydm;
-              if (shareUrl && typeof shareUrl === 'string' && shareUrl.startsWith('http')) {
-                html += `<a href="${shareUrl}" target="_blank" class="block mt-1 text-blue-600">提取码: ${shareUrl}</a>`;
-              }
-            } else if (link.type === 'share') {
-              html += `<a href="${link.url}" target="_blank" class="block mt-2 text-blue-600">${link.displayText}: ${link.url}</a>`;
-            } else {
-              html += `<a href="${link.url}" target="_blank" class="block mt-2 text-green-600">${link.displayText}</a>`;
+            html += `<a href="${link.mainUrl}" target="_blank" class="block mt-2 text-green-600">${link.mainText}</a>`;
+            if (link.hasLz && link.mainType === 'lz' && link.shareUrl) {
+              html += `<a href="${link.shareUrl}" target="_blank" class="block mt-1 text-blue-600">提取码: ${link.shareUrl}</a>`;
             }
           } else {
             html += `<p class="text-gray-500 mt-2">暂无有效链接</p>`;
