@@ -125,7 +125,7 @@
     const STOP_WORDS = ['小说', '漫画'];
     // 定义所有网盘字段
     const NET_DISK_FIELDS = ['kk', 'bd', 'uc', 'xl', 'yd', 'lz'];
-    // 定义所有提取码字段
+    // 定义所有提取码字段（实际是分享页链接）
     const CODE_FIELDS = ['kkm', 'bdm', 'ucm', 'xlm', 'ydm'];
 
     // 网盘字段 → 中文名映射
@@ -178,56 +178,50 @@
     let currentListType = null;
     const ITEMS_PER_PAGE = 20;
 
-    // ✅ 重写：返回 1 个随机网盘（区分普通网盘和蓝奏）
+    // ✅ 重写：返回 1 个随机项（支持蓝奏直链 + 分享页链接）
     function getRandomValidLinks(item) {
-      // 收集所有有效普通网盘（不含 lz）
+      // 收集普通网盘（不含 lz）
       const otherDisks = NET_DISK_FIELDS
         .filter(field => field !== 'lz')
         .filter(field => item[field] && typeof item[field] === 'string' && item[field].trim() !== '' && item[field].startsWith('http'))
         .map(field => ({
+          type: 'normal',
           field,
           name: NET_DISK_NAMES[field] || field.toUpperCase(),
           url: item[field]
         }));
 
-      // 收集所有有效提取码
-      const codes = CODE_FIELDS
-        .map(field => item[field])
-        .filter(code => code && typeof code === 'string' && code.trim() !== '');
+      // 收集分享页链接（kkm, bdm 等，必须是 URL）
+      const shareLinks = CODE_FIELDS
+        .filter(field => item[field] && typeof item[field] === 'string' && item[field].trim() !== '' && item[field].startsWith('http'))
+        .map(field => ({
+          type: 'share',
+          name: '提取码',
+          url: item[field],
+          label: `${NET_DISK_NAMES[field.replace('m', '') || ''] || '其他'}分享页`
+        }));
 
-      // 蓝奏云：必须同时有链接和提取码才算有效
+      // 蓝奏直链
       const lzUrl = item.lz;
-      if (lzUrl && typeof lzUrl === 'string' && lzUrl.trim() !== '' && lzUrl.startsWith('http') && codes.length > 0) {
-        const randomCode = codes[Math.floor(Math.random() * codes.length)];
+      if (lzUrl && typeof lzUrl === 'string' && lzUrl.trim() !== '' && lzUrl.startsWith('http')) {
         otherDisks.push({
           type: 'lz',
           name: '蓝奏',
-          url: lzUrl,
-          code: randomCode
+          url: lzUrl
         });
       }
 
-      if (otherDisks.length === 0) return [];
+      const candidates = [...otherDisks, ...shareLinks];
+      if (candidates.length === 0) return [];
 
-      // 随机选一个
-      const randomIndex = Math.floor(Math.random() * otherDisks.length);
-      const selected = otherDisks[randomIndex];
+      const randomIndex = Math.floor(Math.random() * candidates.length);
+      const selected = candidates[randomIndex];
 
-      // 如果是蓝奏，返回特殊结构
-      if (selected.type === 'lz') {
-        return [{
-          type: 'lz',
-          displayText: selected.name,
-          url: selected.url,
-          code: selected.code
-        }];
-      }
-
-      // 普通网盘
       return [{
-        type: 'normal',
+        type: selected.type,
         displayText: selected.name,
-        url: selected.url
+        url: selected.url,
+        label: selected.label
       }];
     }
 
@@ -271,7 +265,6 @@
         .catch(() => {});
     }
 
-    // ✅【关键修改】支持加载多个 data 文件
     async function loadData() {
       if (resources.length > 0) return;
       loadingDiv.classList.remove('hidden');
@@ -361,7 +354,6 @@
       const items = resources.filter(item => item.type === currentListType);
       const groups = {};
 
-      // 分组：正确 push
       items.forEach(item => {
         const initial = (item.initial || '#').toUpperCase();
         if (!groups[initial]) groups[initial] = [];
@@ -393,9 +385,18 @@
           if (links.length > 0) {
             const link = links[0];
             if (link.type === 'lz') {
+              // 蓝奏直链
               html += `<a href="${link.url}" target="_blank" class="block mt-1 text-green-600">${link.displayText}</a>`;
-              html += `<p class="text-gray-600 mt-1">提取码: <span class="font-mono bg-gray-100 px-2 py-0.5 rounded">${link.code}</span></p>`;
+              // 同时显示分享页链接（如果存在）
+              const shareUrl = item.kkm || item.bdm || item.ucm || item.xlm || item.ydm;
+              if (shareUrl && typeof shareUrl === 'string' && shareUrl.startsWith('http')) {
+                html += `<a href="${shareUrl}" target="_blank" class="block mt-1 text-blue-600">提取码: ${shareUrl}</a>`;
+              }
+            } else if (link.type === 'share') {
+              // 直接是分享页
+              html += `<a href="${link.url}" target="_blank" class="block mt-1 text-blue-600">${link.displayText}: ${link.url}</a>`;
             } else {
+              // 普通网盘
               html += `<a href="${link.url}" target="_blank" class="block mt-1 text-green-600">${link.displayText}</a>`;
             }
           } else {
@@ -507,7 +508,12 @@
             const link = links[0];
             if (link.type === 'lz') {
               html += `<a href="${link.url}" target="_blank" class="block mt-2 text-green-600">${link.displayText}</a>`;
-              html += `<p class="text-gray-600 mt-1">提取码: <span class="font-mono bg-gray-100 px-2 py-0.5 rounded">${link.code}</span></p>`;
+              const shareUrl = item.kkm || item.bdm || item.ucm || item.xlm || item.ydm;
+              if (shareUrl && typeof shareUrl === 'string' && shareUrl.startsWith('http')) {
+                html += `<a href="${shareUrl}" target="_blank" class="block mt-1 text-blue-600">提取码: ${shareUrl}</a>`;
+              }
+            } else if (link.type === 'share') {
+              html += `<a href="${link.url}" target="_blank" class="block mt-2 text-blue-600">${link.displayText}: ${link.url}</a>`;
             } else {
               html += `<a href="${link.url}" target="_blank" class="block mt-2 text-green-600">${link.displayText}</a>`;
             }
