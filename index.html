@@ -369,7 +369,7 @@
             const link = links[0];
             html += `<a href="${link.mainUrl}" target="_blank" class="block mt-1 text-green-600">${link.mainText}</a>`;
             if (link.hasLz && link.mainType === 'lz' && link.shareUrl) {
-              html += `<a href="${link.shareUrl}" target="_blank" class="block mt-1 text-blue-600">提取码: ${link.shareUrl}</a>`;
+              html += `<a href="${link.shareUrl}" target="_blank" class="block mt-1 text-green-600">提取码: ${link.shareUrl}</a>`;
             }
           } else {
             html += `<p class="text-gray-500 mt-1">暂无有效链接</p>`;
@@ -478,9 +478,9 @@
 
           if (links.length > 0) {
             const link = links[0];
-            html += `<a href="${link.mainUrl}" target="_blank" class="block mt-2 text-green-600">${link.mainText}</a>`;
+            html += `<a href="${link.mainUrl}" target="_blank" class="block mt-2 text-blue-600">${link.mainText}</a>`;
             if (link.hasLz && link.mainType === 'lz' && link.shareUrl) {
-              html += `<a href="${link.shareUrl}" target="_blank" class="block mt-1 text-blue-600">提取码: ${link.shareUrl}</a>`;
+              html += `<a href="${link.shareUrl}" target="_blank" class="block mt-1 text-green-600">提取码: ${link.shareUrl}</a>`;
             }
           } else {
             html += `<p class="text-gray-500 mt-2">暂无有效链接</p>`;
