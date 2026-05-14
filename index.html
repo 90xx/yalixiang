@@ -178,10 +178,11 @@
     let currentListType = null;
     const ITEMS_PER_PAGE = 20;
 
-    // ✅ 重写：只返回 1 个随机网盘（含名称+链接）
+    // ✅ 重写：返回 1 个随机网盘（区分普通网盘和蓝奏）
     function getRandomValidLinks(item) {
-      // 收集有效网盘（带名称）
-      const validDisks = NET_DISK_FIELDS
+      // 收集所有有效普通网盘（不含 lz）
+      const otherDisks = NET_DISK_FIELDS
+        .filter(field => field !== 'lz')
         .filter(field => item[field] && typeof item[field] === 'string' && item[field].trim() !== '' && item[field].startsWith('http'))
         .map(field => ({
           field,
@@ -189,34 +190,42 @@
           url: item[field]
         }));
 
-      if (validDisks.length === 0) return [];
+      // 收集所有有效提取码
+      const codes = CODE_FIELDS
+        .map(field => item[field])
+        .filter(code => code && typeof code === 'string' && code.trim() !== '');
+
+      // 蓝奏云：必须同时有链接和提取码才算有效
+      const lzUrl = item.lz;
+      if (lzUrl && typeof lzUrl === 'string' && lzUrl.trim() !== '' && lzUrl.startsWith('http') && codes.length > 0) {
+        const randomCode = codes[Math.floor(Math.random() * codes.length)];
+        otherDisks.push({
+          type: 'lz',
+          name: '蓝奏',
+          url: lzUrl,
+          code: randomCode
+        });
+      }
+
+      if (otherDisks.length === 0) return [];
 
       // 随机选一个
-      const randomIndex = Math.floor(Math.random() * validDisks.length);
-      const selected = validDisks[randomIndex];
+      const randomIndex = Math.floor(Math.random() * otherDisks.length);
+      const selected = otherDisks[randomIndex];
 
-      // 蓝奏云特殊处理：尝试加提取码
-      if (selected.field === 'lz') {
-        const codes = CODE_FIELDS
-          .map(field => item[field])
-          .filter(code => code && typeof code === 'string' && code.trim() !== '');
-        
-        if (codes.length > 0) {
-          const randomCode = codes[Math.floor(Math.random() * codes.length)];
-          return [{
-            displayText: `${selected.name} | 提取码: ${randomCode}`,
-            url: selected.url
-          }];
-        }
-        // 无提取码时也返回（仅显示网盘名）
+      // 如果是蓝奏，返回特殊结构
+      if (selected.type === 'lz') {
         return [{
+          type: 'lz',
           displayText: selected.name,
-          url: selected.url
+          url: selected.url,
+          code: selected.code
         }];
       }
 
-      // 其他网盘
+      // 普通网盘
       return [{
+        type: 'normal',
         displayText: selected.name,
         url: selected.url
       }];
@@ -376,14 +385,19 @@
           html += `<h3 class="text-xl font-bold text-gray-700 border-l-4 border-blue-500 pl-2">${entry.initial}</h3>`;
         } else {
           const item = entry.data;
-          const links = getRandomValidLinks(item); // ✅ 只返回 1 个
+          const links = getRandomValidLinks(item);
 
           html += `<div class="bg-white p-4 rounded-lg shadow">
             <h4 class="font-semibold text-blue-600">${item.title}</h4>`;
 
           if (links.length > 0) {
-            const { displayText, url } = links[0]; // ✅ 取唯一结果
-            html += `<a href="${url}" target="_blank" class="block mt-1 text-green-600">${displayText}</a>`;
+            const link = links[0];
+            if (link.type === 'lz') {
+              html += `<a href="${link.url}" target="_blank" class="block mt-1 text-green-600">${link.displayText}</a>`;
+              html += `<p class="text-gray-600 mt-1">提取码: <span class="font-mono bg-gray-100 px-2 py-0.5 rounded">${link.code}</span></p>`;
+            } else {
+              html += `<a href="${link.url}" target="_blank" class="block mt-1 text-green-600">${link.displayText}</a>`;
+            }
           } else {
             html += `<p class="text-gray-500 mt-1">暂无有效链接</p>`;
           }
@@ -485,13 +499,18 @@
         noResultsDiv.classList.remove('hidden');
       } else {
         hits.forEach(item => {
-          const links = getRandomValidLinks(item); // ✅ 只返回 1 个
+          const links = getRandomValidLinks(item);
           let html = `<div class="bg-white p-5 rounded-xl shadow hover:shadow-md transition">
             <h2 class="text-xl font-semibold text-blue-600">${item.title}</h2>`;
 
           if (links.length > 0) {
-            const { displayText, url } = links[0]; // ✅ 取唯一结果
-            html += `<a href="${url}" target="_blank" class="block mt-2 text-green-600">${displayText}</a>`;
+            const link = links[0];
+            if (link.type === 'lz') {
+              html += `<a href="${link.url}" target="_blank" class="block mt-2 text-green-600">${link.displayText}</a>`;
+              html += `<p class="text-gray-600 mt-1">提取码: <span class="font-mono bg-gray-100 px-2 py-0.5 rounded">${link.code}</span></p>`;
+            } else {
+              html += `<a href="${link.url}" target="_blank" class="block mt-2 text-green-600">${link.displayText}</a>`;
+            }
           } else {
             html += `<p class="text-gray-500 mt-2">暂无有效链接</p>`;
           }
