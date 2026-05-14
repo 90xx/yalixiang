@@ -128,6 +128,16 @@
     // 定义所有提取码字段
     const CODE_FIELDS = ['kkm', 'bdm', 'ucm', 'xlm', 'ydm'];
 
+    // 网盘字段 → 中文名映射
+    const NET_DISK_NAMES = {
+      'kk': '夸克',
+      'bd': '百度',
+      'uc': 'UC',
+      'xl': '迅雷',
+      'yd': '阿里云盘',
+      'lz': '蓝奏'
+    };
+
     const ACCESS_MAP = {
       '2026-05-15': { link: 'https://pan.quark.cn/s/c68f0132a97b', code: '8532' },
       '2026-01-06': { link: 'https://pan.quark.cn/s/fbabd589546a', code: '1470' },
@@ -168,41 +178,48 @@
     let currentListType = null;
     const ITEMS_PER_PAGE = 20;
 
-    function getRandomValidLinks(item, maxCount = 3) {
-      // 获取有效的网盘链接
-      const diskUrls = NET_DISK_FIELDS
-        .map(field => ({ field, url: item[field] }))
-        .filter(obj => obj.url && typeof obj.url === 'string' && obj.url.trim() !== '' && obj.url.startsWith('http'));
+    // ✅ 重写：只返回 1 个随机网盘（含名称+链接）
+    function getRandomValidLinks(item) {
+      // 收集有效网盘（带名称）
+      const validDisks = NET_DISK_FIELDS
+        .filter(field => item[field] && typeof item[field] === 'string' && item[field].trim() !== '' && item[field].startsWith('http'))
+        .map(field => ({
+          field,
+          name: NET_DISK_NAMES[field] || field.toUpperCase(),
+          url: item[field]
+        }));
 
-      // 获取有效的提取码
-      const codes = CODE_FIELDS
-        .map(field => item[field])
-        .filter(code => code && typeof code === 'string' && code.trim() !== '');
+      if (validDisks.length === 0) return [];
 
-      const validDisks = [...diskUrls]; // 创建副本用于操作
-      const resultUrls = [];
+      // 随机选一个
+      const randomIndex = Math.floor(Math.random() * validDisks.length);
+      const selected = validDisks[randomIndex];
 
-      while (resultUrls.length < maxCount && validDisks.length > 0) {
-        // 随机选择一个网盘
-        const randomIndex = Math.floor(Math.random() * validDisks.length);
-        const selectedDisk = validDisks.splice(randomIndex, 1)[0];
+      // 蓝奏云特殊处理：尝试加提取码
+      if (selected.field === 'lz') {
+        const codes = CODE_FIELDS
+          .map(field => item[field])
+          .filter(code => code && typeof code === 'string' && code.trim() !== '');
         
-        // 如果抽到的是蓝奏云(lz)
-        if (selectedDisk.field === 'lz') {
-          // 如果有可用的提取码，则组合显示
-          if (codes.length > 0) {
-            const randomCode = codes[Math.floor(Math.random() * codes.length)];
-            // 将蓝奏云链接和提取码组合成一个格式化的字符串，方便后续展示
-            resultUrls.push(`${selectedDisk.url}|提取码: ${randomCode}`);
-          }
-          // 如果没有提取码，就跳过这个蓝奏云链接，继续下一次循环
-        } else {
-          // 如果不是蓝奏云，直接添加链接
-          resultUrls.push(selectedDisk.url);
+        if (codes.length > 0) {
+          const randomCode = codes[Math.floor(Math.random() * codes.length)];
+          return [{
+            displayText: `${selected.name} | 提取码: ${randomCode}`,
+            url: selected.url
+          }];
         }
+        // 无提取码时也返回（仅显示网盘名）
+        return [{
+          displayText: selected.name,
+          url: selected.url
+        }];
       }
 
-      return resultUrls;
+      // 其他网盘
+      return [{
+        displayText: selected.name,
+        url: selected.url
+      }];
     }
 
     function cleanQuery(query) {
@@ -230,14 +247,9 @@
           updateTextEl.innerHTML = '';
 
           let messages = [];
-
-          if (typeof data.message === 'string') {
-            messages = [data.message];
-          } else if (Array.isArray(data.messages)) {
-            messages = data.messages;
-          } else {
-            return;
-          }
+          if (typeof data.message === 'string') messages = [data.message];
+          else if (Array.isArray(data.messages)) messages = data.messages;
+          else return;
 
           messages.forEach(msg => {
             const div = document.createElement('div');
@@ -255,7 +267,6 @@
       if (resources.length > 0) return;
       loadingDiv.classList.remove('hidden');
 
-      // 👇 按需修改这里的文件列表
       const dataFiles = [
         './thai-novel.json',
         './data2.json'
@@ -338,63 +349,52 @@
     }
 
     function renderListPage(page) {
-  const items = resources.filter(item => item.type === currentListType);
-  const groups = {};
+      const items = resources.filter(item => item.type === currentListType);
+      const groups = {};
 
-  // 🔴 修复1: 正确地将 item 添加到 groups[initial] 中
-  items.forEach(item => {
-    const initial = (item.initial || '#').toUpperCase();
-    if (!groups[initial]) groups[initial] = [];
-    groups[initial].push(item); // <-- 关键修复：用 push，不是 forEach
-  });
+      // 分组：正确 push
+      items.forEach(item => {
+        const initial = (item.initial || '#').toUpperCase();
+        if (!groups[initial]) groups[initial] = [];
+        groups[initial].push(item);
+      });
 
-  const sortedInitials = Object.keys(groups).sort();
-  const allEntries = [];
-  sortedInitials.forEach(initial => {
-    allEntries.push({ type: 'header', initial });
-    // 🔴 修复2: 这里是另一个小错误，变量名应为 `groups[initial]`
-    groups[initial].forEach(item => allEntries.push({ type: 'item', data: item }));
-  });
+      const sortedInitials = Object.keys(groups).sort();
+      const allEntries = [];
+      sortedInitials.forEach(initial => {
+        allEntries.push({ type: 'header', initial });
+        groups[initial].forEach(item => allEntries.push({ type: 'item', data: item }));
+      });
 
-  const totalPages = Math.ceil(allEntries.length / ITEMS_PER_PAGE);
-  const start = (page - 1) * ITEMS_PER_PAGE;
-  const pageEntries = allEntries.slice(start, start + ITEMS_PER_PAGE);
+      const totalPages = Math.ceil(allEntries.length / ITEMS_PER_PAGE);
+      const start = (page - 1) * ITEMS_PER_PAGE;
+      const pageEntries = allEntries.slice(start, start + ITEMS_PER_PAGE);
 
-  let html = '';
-  pageEntries.forEach(entry => {
-    if (entry.type === 'header') {
-      html += `<h3 class="text-xl font-bold text-gray-700 border-l-4 border-blue-500 pl-2">${entry.initial}</h3>`;
-    } else {
-      const item = entry.data;
-      const links = getRandomValidLinks(item, 3);
+      let html = '';
+      pageEntries.forEach(entry => {
+        if (entry.type === 'header') {
+          html += `<h3 class="text-xl font-bold text-gray-700 border-l-4 border-blue-500 pl-2">${entry.initial}</h3>`;
+        } else {
+          const item = entry.data;
+          const links = getRandomValidLinks(item); // ✅ 只返回 1 个
 
-      html += `<div class="bg-white p-4 rounded-lg shadow">
-        <h4 class="font-semibold text-blue-600">${item.title}</h4>`;
+          html += `<div class="bg-white p-4 rounded-lg shadow">
+            <h4 class="font-semibold text-blue-600">${item.title}</h4>`;
 
-      if (links.length > 0) {
-        links.forEach((linkInfo, idx) => {
-          let displayUrl, displayText;
-          if (linkInfo.includes('|')) {
-            const parts = linkInfo.split('|');
-            displayUrl = parts[0];
-            displayText = parts[1];
+          if (links.length > 0) {
+            const { displayText, url } = links[0]; // ✅ 取唯一结果
+            html += `<a href="${url}" target="_blank" class="block mt-1 text-green-600">${displayText}</a>`;
           } else {
-            displayUrl = linkInfo;
-            displayText = `🔗 网盘 ${idx + 1}`;
+            html += `<p class="text-gray-500 mt-1">暂无有效链接</p>`;
           }
-          html += `<a href="${displayUrl}" target="_blank" class="block mt-1 text-green-600">${displayText}</a>`;
-        });
-      } else {
-        html += `<p class="text-gray-500 mt-1">暂无有效链接</p>`;
-      }
 
-      html += `</div>`;
+          html += `</div>`;
+        }
+      });
+
+      document.getElementById('groupedList').innerHTML = html || '<p class="text-center text-gray-500">暂无资源</p>';
+      renderPagination(page, totalPages);
     }
-  });
-
-  document.getElementById('groupedList').innerHTML = html || '<p class="text-center text-gray-500">暂无资源</p>';
-  renderPagination(page, totalPages);
-}
 
     function renderPagination(current, total) {
       const div = document.getElementById('listPagination');
@@ -485,23 +485,13 @@
         noResultsDiv.classList.remove('hidden');
       } else {
         hits.forEach(item => {
-          const links = getRandomValidLinks(item, 3);
+          const links = getRandomValidLinks(item); // ✅ 只返回 1 个
           let html = `<div class="bg-white p-5 rounded-xl shadow hover:shadow-md transition">
             <h2 class="text-xl font-semibold text-blue-600">${item.title}</h2>`;
 
           if (links.length > 0) {
-            links.forEach((linkInfo, idx) => {
-              let displayUrl, displayText;
-              if (linkInfo.includes('|')) {
-                const parts = linkInfo.split('|');
-                displayUrl = parts[0];
-                displayText = parts[1];
-              } else {
-                displayUrl = linkInfo;
-                displayText = `🔗 网盘 ${idx + 1}`;
-              }
-              html += `<a href="${displayUrl}" target="_blank" class="block mt-2 text-green-600">${displayText}</a>`;
-            });
+            const { displayText, url } = links[0]; // ✅ 取唯一结果
+            html += `<a href="${url}" target="_blank" class="block mt-2 text-green-600">${displayText}</a>`;
           } else {
             html += `<p class="text-gray-500 mt-2">暂无有效链接</p>`;
           }
