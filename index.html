@@ -32,17 +32,38 @@
       background-color: #d1d5db;
       cursor: not-allowed;
     }
+    .nav-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .nav-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+    /* 新增遮罩层样式：改为完全透明 */
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0); /* 关键修改：完全透明 */
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen py-12 px-4">
 
   <!-- 访问码模态框 -->
-  <div id="accessModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="display: none;">
+  <div id="accessModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full mx-4">
-      <h2 id="modalTitle" class="text-xl font-bold text-gray-800 text-center mb-4 flex items-center justify-center">
+      <!-- 移除标题和说明文字 -->
+      <!-- <h2 id="modalTitle" class="text-xl font-bold text-gray-800 text-center mb-4 flex items-center justify-center">
         <span class="mr-2">🔒</span> 查看完整资源合集
       </h2>
-      <p class="text-gray-600 text-center mb-6">请前往指定位置获取今日访问码：</p>
+      <p class="text-gray-600 text-center mb-6">请前往指定位置获取今日访问码：</p> -->
 
       <a id="accessLink" href="#" target="_blank" rel="noopener noreferrer"
          class="w-full block text-center py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition mb-6 flex items-center justify-center">
@@ -50,12 +71,12 @@
       </a>
 
       <div class="mb-4">
-        <label class="block text-gray-700 text-sm mb-2">请输入 4 位访问码：</label>
+        <label class="block text-gray-700 text-sm mb-2">请输入访问码：</label>
         <input
           id="accessCodeInput"
           type="text"
-          placeholder="例如: ab12"
-          maxlength="4"
+          placeholder="例如: work"
+          maxlength="15"
           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
         />
       </div>
@@ -68,7 +89,12 @@
     </div>
   </div>
 
-  <!-- 主容器：搜索区（默认） -->
+  <!-- 遮罩层：覆盖未验证状态下的功能 -->
+  <div id="overlay" class="overlay hidden">
+    <!-- 文字已移除，因为遮罩是透明的，只起“覆盖”作用 -->
+  </div>
+
+  <!-- 主容器：搜索区（移入分类区域） -->
   <div id="mainContainer" class="max-w-3xl mx-auto">
     <h1 class="text-3xl font-bold text-center text-gray-800 mb-6 flex items-center justify-center">
       <span class="mr-2">🔍</span> Doujiao
@@ -79,31 +105,16 @@
       <a href="https://www.kdocs.cn/l/cfv01SPXoG7L" target="_blank" rel="noopener noreferrer"
          class="inline-block px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium rounded-full shadow hover:shadow-md transition transform hover:-translate-y-0.5">
         👋 新人必看指南
-      </a>
+       </a>
+    </p>
     </p>
 
-    <!-- 类型导航（始终显示，但点击需验证） -->
+    <!-- 类型导航 -->
     <div id="typeNav" class="text-center mt-4">
       <!-- 动态生成按钮 -->
     </div>
 
-    <div class="flex flex-col md:flex-row gap-2 items-center justify-center mt-4">
-      <input
-        id="searchInput"
-        type="text"
-        placeholder="输入资源名称..."
-        class="w-full md:w-96 px-4 py-3 border border-gray-300 rounded-lg shadow-sm"
-      />
-      <button class="search-btn">搜索</button>
-    </div>
-
-    <!-- 🔔 更新通知（现在支持多行） -->
-    <div id="updateBanner" class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 hidden">
-      <div class="flex justify-between items-start">
-        <div id="updateText" class="font-medium space-y-1 text-sm"></div>
-        <button onclick="this.parentElement.parentElement.classList.add('hidden')" class="text-blue-600 hover:text-blue-800 ml-2">×</button>
-      </div>
-    </div>
+    <!-- ⛔️ 主页的搜索框已被移除 -->
 
     <div id="loading" class="text-center text-gray-500 mt-6 hidden">正在加载资源库...</div>
     <div id="results" class="mt-6 space-y-4"></div>
@@ -116,8 +127,62 @@
       <h2 id="listTitle" class="text-2xl font-bold text-gray-800"></h2>
       <button id="backBtn" class="text-blue-500 hover:underline">← 返回</button>
     </div>
+
+    <!-- ✅ 搜索框移到清单页顶部 -->
+    <div class="flex flex-col md:flex-row gap-2 items-center justify-center mb-6">
+      <input
+        id="listSearchInput"
+        type="text"
+        placeholder="在此分类中搜索..."
+        class="w-full md:w-96 px-4 py-3 border border-gray-300 rounded-lg shadow-sm"
+      />
+      <button id="listSearchBtn" class="search-btn">搜索</button>
+    </div>
+
     <div id="groupedList" class="space-y-6"></div>
     <div id="listPagination" class="mt-8 flex justify-center space-x-2"></div>
+  </div>
+
+  <!-- 导航区 -->
+  <div id="navSection" class="max-w-6xl mx-auto mt-12">
+    <h2 class="text-2xl font-bold text-center text-gray-800 mb-6 flex items-center justify-center">
+      <span class="mr-2">🍆</span> 导航
+    </h2>
+
+    <div id="navGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      <!-- 示例导航卡片 -->
+      <div class="nav-card bg-white p-6 rounded-xl shadow">
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">福剧及相关原著小说、漫画、动漫、广播剧、综艺、同人、直播、演唱会等</h3>
+        <ul class="space-y-2">
+          <li><a href="https://www.kdocs.cn/wo/sl/v13vmrHa" target="_blank" class="text-blue-500 hover:underline">🔥 日更清单</a></li>
+          <li><a href="https://www.kdocs.cn/etapps/query/q/i0Zyct1J" target="_blank" class="text-blue-500 hover:underline">🔍 资源搜索</a></li>
+        </ul>
+          <li><a href="https://web.wps.cn/wo/sl/v32yWaHY?app_id=HAN1Wy4lkGVUzDKEgRCgt" target="_blank" class="text-blue-500 hover:underline">🔧 链接失效</a></li>
+        </ul>
+      </div>
+
+      <div class="nav-card bg-white p-6 rounded-xl shadow">
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">他泰</h3>
+        <ul class="space-y-2">
+          <li><a href="https://www.kdocs.cn/l/cj87Tult65Gm" target="_blank" class="text-blue-500 hover:underline">🎬 在播剧综</a></li>
+          <li><a href="https://www.kdocs.cn/wo/sl/v149lkUj" target="_blank" class="text-blue-500 hover:underline">🎬 泰剧/电影</a></li>
+          <li><a href="https://www.kdocs.cn/wo/sl/v15QzqU" target="_blank" class="text-blue-500 hover:underline">🎬 泰短剧</a></li>
+          <li><a href="https://www.kdocs.cn/wo/sl/v13Z5opW" target="_blank" class="text-blue-500 hover:underline">📚 泰剧原著小说</a></li>
+          <li><a href="https://www.kdocs.cn/wo/sl/v12hfYez" target="_blank" class="text-blue-500 hover:underline">🎬 泰综</a></li>
+           <li><a href="https://www.kdocs.cn/wo/sl/v149Advj" target="_blank" class="text-blue-500 hover:underline">🎧 泰剧-广播剧</a></li>
+         <li><a href="https://www.kdocs.cn/wo/sl/v11RKYqL" target="_blank" class="text-blue-500 hover:underline">🎬 泰剧-漫画</a></li> 
+           <li><a href="https://www.kdocs.cn/wo/sl/v12lkdBp" target="_blank" class="text-blue-500 hover:underline">📚 他泰-同人文</a></li>
+      </ul>
+      </div>
+
+            <div class="nav-card bg-white p-6 rounded-xl shadow">
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">小说库（海废米、引力圈、爱发电）</h3>
+        <ul class="space-y-2">
+          <li><a href="https://www.kdocs.cn/wo/sl/v12kUFBG" target="_blank" class="text-blue-500 hover:underline">📋 小说清单</a></li>
+          <li><a href="https://www.kdocs.cn/etapps/query/q/Ny0Tv9Uw" target="_blank" class="text-blue-500 hover:underline">🔍 查询</a></li>
+      </ul>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -139,33 +204,39 @@
     };
 
     const ACCESS_MAP = {
-      '2026-05-16': { link: 'https://pan.quark.cn/s/c68f0132a97b', code: '8532' },
-      '2026-01-06': { link: 'https://pan.quark.cn/s/fbabd589546a', code: '1470' },
-      '2026-01-07': { link: 'https://pan.quark.cn/s/1a2c9a75ca2d', code: '7231' },
-      '2026-01-08': { link: 'https://pan.quark.cn/s/aa0b8d53620a', code: '2048' },
-      '2026-01-09': { link: 'https://pan.quark.cn/s/2da4c170bede', code: '3388' },
-      '2026-01-10': { link: 'https://pan.quark.cn/s/ffd272d299ea', code: '7478' },
-      '2026-01-11': { link: 'https://pan.quark.cn/s/b6c0fc9d4187', code: '1574' },
-      '2026-01-12': { link: 'https://pan.quark.cn/s/031a59f2e250', code: '7865' },
-      '2026-01-13': { link: 'https://pan.quark.cn/s/5455ceee2f80', code: '6855' },
-      '2026-01-14': { link: 'https://pan.quark.cn/s/412ae569c058', code: '3567' },
-      '2026-01-15': { link: 'https://pan.quark.cn/s/7ca20e801c9d', code: '3385' },
-      '2026-01-16': { link: 'https://pan.quark.cn/s/9fe9a95bc5f2', code: '1727' },
-      '2026-01-17': { link: 'https://pan.quark.cn/s/bb6cd1e53d5b', code: '6721' },
-      '2026-01-18': { link: 'https://pan.quark.cn/s/5f17a9a642fb', code: '2824' },
-      '2026-01-19': { link: 'https://pan.quark.cn/s/61cf986dfc4b', code: '6344' },
-      '2026-01-20': { link: 'https://pan.quark.cn/s/8b0f23aba29c', code: '8340' },
-      '2026-01-21': { link: 'https://pan.quark.cn/s/d38ad59e59dd', code: '5558' },
-      '2026-01-22': { link: 'https://pan.quark.cn/s/ebfe6725e44b', code: '1637' },
-      '2026-01-23': { link: 'https://pan.quark.cn/s/707e11322f75', code: '8600' },
-      '2026-01-24': { link: 'https://pan.quark.cn/s/219e178ada01', code: '3876' },
-      '2026-01-25': { link: 'https://pan.quark.cn/s/7ee5a0d569f3', code: '3234' },
-      '2026-01-26': { link: 'https://pan.quark.cn/s/56f2d33a9d79', code: '5207' }
-    };
+  '2026-05-20': { link: 'https://pan.quark.cn/s/d30852a08eff', code: 'bird' },
+  '2026-05-21': { link: 'https://pan.quark.cn/s/6d988f15a4ce', code: 'cake' },
+  '2026-05-22': { link: 'https://pan.quark.cn/s/453aff236542', code: 'desk' },
+  '2026-05-23': { link: 'https://pan.quark.cn/s/bfac19f03767', code: 'fish' },
+  '2026-05-24': { link: 'https://pan.quark.cn/s/bcbfec0eb69b', code: 'game' },
+  '2026-05-25': { link: 'https://pan.quark.cn/s/1007a6691c4b', code: 'hand' },
+  '2026-05-26': { link: 'https://pan.quark.cn/s/a9996bc1030f', code: 'jump' },
+  '2026-05-27': { link: 'https://pan.quark.cn/s/cec97ec3f1d0', code: 'kite' },
+  '2026-05-28': { link: 'https://pan.quark.cn/s/9b8502bf8c6a', code: 'lamp' },
+  '2026-05-29': { link: 'https://pan.quark.cn/s/129e6dd9479f', code: 'moon' },
+  '2026-05-30': { link: 'https://pan.quark.cn/s/0c75af9b394b', code: 'nest' },
+  '2026-05-31': { link: 'https://pan.quark.cn/s/ac2be3c7fbe9', code: 'open' },
+  '2026-06-01': { link: 'https://pan.quark.cn/s/b6965220c8d9', code: 'park' },
+  '2026-06-02': { link: 'https://pan.quark.cn/s/ddb59d52955d', code: 'queen' },
+  '2026-06-03': { link: 'https://pan.quark.cn/s/436bd0ceba2b', code: 'rain' },
+  '2026-06-04': { link: 'https://pan.quark.cn/s/88e327ea396c', code: 'star' },
+  '2026-06-05': { link: 'https://pan.quark.cn/s/9c0549dfd5a1', code: 'tree' },
+  '2026-06-06': { link: 'https://pan.quark.cn/s/ae89882d662b', code: 'umbrella' },
+  '2026-06-07': { link: 'https://pan.quark.cn/s/167faa36f2ab', code: 'vest' },
+  '2026-06-08': { link: 'https://pan.quark.cn/s/f4b191c14b1a', code: 'wolf' },
+  '2026-06-09': { link: 'https://pan.quark.cn/s/22a965389307', code: 'yarn' },
+  '2026-06-10': { link: 'https://pan.quark.cn/s/d1e6ef4cbdae', code: 'zero' },
+  '2026-06-11': { link: 'https://pan.quark.cn/s/40c8a04a61da', code: 'blue' },
+  '2026-06-12': { link: 'https://pan.quark.cn/s/5f38d86ebf6e', code: 'cold' },
+  '2026-06-13': { link: 'https://pan.quark.cn/s/9e3abc53d119', code: 'door' },
+  '2026-06-14': { link: 'https://pan.quark.cn/s/e5bffcf93999', code: 'egg' },
+  '2026-06-15': { link: 'https://pan.quark.cn/s/ab676418abd0', code: 'face' },
+  '2026-06-16': { link: 'https://pan.quark.cn/s/9c4b6582b5f9', code: 'good' },
+  '2026-06-17': { link: 'https://pan.quark.cn/s/e7b8ee3defde', code: 'hair' },
+  '2026-06-18': { link: 'https://pan.quark.cn/s/cbcd05173586', code: 'idea' }
+}
 
     // DOM
-    const searchInput = document.getElementById('searchInput');
-    const searchBtn = document.querySelector('.search-btn');
     const loadingDiv = document.getElementById('loading');
     const resultsDiv = document.getElementById('results');
     const noResultsDiv = document.getElementById('noResults');
@@ -173,12 +244,140 @@
     const listView = document.getElementById('listView');
     const typeNav = document.getElementById('typeNav');
     const accessModal = document.getElementById('accessModal');
+    const navSection = document.getElementById('navSection');
+    const overlay = document.getElementById('overlay');
+
+    // 新增：清单页的搜索框和按钮
+    const listSearchInput = document.getElementById('listSearchInput');
+    const listSearchBtn = document.getElementById('listSearchBtn');
 
     let resources = [];
     let currentListType = null;
     const ITEMS_PER_PAGE = 20;
+    let isVerified = false; // 全局验证状态标志
 
-    // ✅ 修正版：返回 1 个随机项，并附带蓝奏和分享页信息
+    // 检查是否已通过今日验证
+    function checkVerificationStatus() {
+      const today = getBeijingDate();
+      const lastVerified = localStorage.getItem('lastVerifiedDate');
+      return lastVerified === today;
+    }
+
+    // 设置今日已验证状态
+    function setVerificationStatus() {
+      const today = getBeijingDate();
+      localStorage.setItem('lastVerifiedDate', today);
+    }
+
+    // 获取北京时间的函数
+    function getBeijingDate() {
+      const now = new Date();
+      const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+      const beijingTime = new Date(utc + 8 * 3600000);
+      return beijingTime.toLocaleDateString('sv');
+    }
+
+    // 显示遮罩层，禁用交互
+    function showOverlay() {
+        overlay.classList.remove('hidden');
+        // 禁用分类按钮的点击事件
+        typeNav.querySelectorAll('button').forEach(btn => {
+            btn.style.pointerEvents = 'none';
+            btn.style.opacity = '0.6';
+        });
+        // 禁用导航链接的点击事件
+        navSection.querySelectorAll('a').forEach(link => {
+            link.style.pointerEvents = 'none';
+            link.style.opacity = '0.6';
+        });
+    }
+
+    // 隐藏遮罩层，启用交互
+    function hideOverlay() {
+        overlay.classList.add('hidden');
+        // 启用分类按钮的点击事件
+        typeNav.querySelectorAll('button').forEach(btn => {
+            btn.style.pointerEvents = 'auto';
+            btn.style.opacity = '1';
+        });
+        // 启用导航链接的点击事件
+        navSection.querySelectorAll('a').forEach(link => {
+            link.style.pointerEvents = 'auto';
+            link.style.opacity = '1';
+        });
+    }
+
+    // 初始化页面：检查验证状态
+    function initPage() {
+        if (checkVerificationStatus()) {
+            // 如果已验证
+            isVerified = true;
+            accessModal.style.display = 'none';
+            hideOverlay(); // 隐藏遮罩，启用功能
+            // 然后加载数据
+            loadData();
+        } else {
+            // 如果未验证
+            isVerified = false;
+            accessModal.style.display = 'flex';
+            showOverlay(); // 显示遮罩，禁用功能
+            // 更新模态框中的日期和链接
+            updateAccessInfo();
+        }
+    }
+
+    // 更新模态框中的日期和链接
+    function updateAccessInfo() {
+        const today = getBeijingDate();
+        const record = ACCESS_MAP[today];
+        
+        if (record) {
+            document.getElementById('linkDate').textContent = today;
+            document.getElementById('accessLink').href = record.link;
+        } else {
+            document.getElementById('linkDate').textContent = today;
+            document.getElementById('accessLink').href = '#';
+            console.warn(`未配置 ${today} 的访问码和链接。`);
+        }
+    }
+
+    // 验证访问码
+    document.getElementById('verifyBtn').addEventListener('click', () => {
+      const input = document.getElementById('accessCodeInput').value.trim();
+      const today = getBeijingDate();
+      const record = ACCESS_MAP[today];
+      const errorText = document.getElementById('errorText');
+
+      if (!record) {
+        errorText.textContent = `系统错误：未配置 ${today} 的访问码。`;
+        errorText.classList.remove('hidden');
+        return;
+      }
+
+      if (input === record.code) {
+        setVerificationStatus(); // 记录验证状态
+        isVerified = true; // 更新全局状态
+        accessModal.style.display = 'none'; // 关闭模态框
+        hideOverlay(); // 隐藏遮罩
+        document.getElementById('accessCodeInput').value = ''; // 清空输入框
+        errorText.classList.add('hidden'); // 隐藏错误信息
+
+        // 验证成功后开始加载数据
+        loadData();
+      } else {
+        errorText.textContent = '访问码错误，请重新输入。';
+        errorText.classList.remove('hidden');
+      }
+    });
+
+    // 允许在输入框按回车键验证
+    document.getElementById('accessCodeInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            document.getElementById('verifyBtn').click();
+        }
+    });
+
+    // 🔥 修改：getRandomValidLinks 函数
     function getRandomValidLinks(item) {
       const validDisks = NET_DISK_FIELDS
         .filter(field => item[field] && typeof item[field] === 'string' && item[field].trim() !== '' && item[field].startsWith('http'))
@@ -195,7 +394,7 @@
       const selected = validDisks[randomIndex];
 
       // 如果是 lz，收集所有有效的分享页链接
-      let shareUrl = null;
+      let codeUrl = null;
       if (selected.type === 'lz') {
         const validSharePages = CODE_FIELDS
           .filter(field => item[field] && typeof item[field] === 'string' && item[field].trim() !== '' && item[field].startsWith('http'))
@@ -204,11 +403,8 @@
         if (validSharePages.length > 0) {
           // 随机选一个分享页链接
           const randomShareIndex = Math.floor(Math.random() * validSharePages.length);
-          shareUrl = validSharePages[randomShareIndex];
+          codeUrl = validSharePages[randomShareIndex]; // 🔥 将分享页链接存储为 codeUrl
         }
-      } else {
-        // 如果不是 lz，就不需要分享页链接
-        shareUrl = null;
       }
 
       return [{
@@ -216,7 +412,7 @@
         mainText: selected.name,
         mainUrl: selected.url,
         hasLz: !!item.lz && typeof item.lz === 'string' && item.lz.trim() !== '' && item.lz.startsWith('http'),
-        shareUrl: shareUrl
+        codeUrl: codeUrl // 🔥 添加 codeUrl 字段
       }];
     }
 
@@ -229,44 +425,12 @@
       return cleaned.trim();
     }
 
-    function getBeijingDate() {
-      const now = new Date();
-      const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-      const beijingTime = new Date(utc + 8 * 3600000);
-      return beijingTime.toLocaleDateString('sv');
-    }
-
-    function showUpdateNotice() {
-      fetch('./update.json?t=' + Date.now())
-        .then(r => r.json())
-        .then(data => {
-          const updateTextEl = document.getElementById('updateText');
-          const banner = document.getElementById('updateBanner');
-          updateTextEl.innerHTML = '';
-
-          let messages = [];
-          if (typeof data.message === 'string') messages = [data.message];
-          else if (Array.isArray(data.messages)) messages = data.messages;
-          else return;
-
-          messages.forEach(msg => {
-            const div = document.createElement('div');
-            div.textContent = msg;
-            updateTextEl.appendChild(div);
-          });
-
-          banner.classList.remove('hidden');
-        })
-        .catch(() => {});
-    }
-
     async function loadData() {
       if (resources.length > 0) return;
       loadingDiv.classList.remove('hidden');
 
       const dataFiles = [
-        './thai-novel.json',
-        './data2.json'
+       './hfmyd.json'
       ];
 
       try {
@@ -291,7 +455,6 @@
 
         loadingDiv.classList.add('hidden');
         renderTypeNav();
-        showUpdateNotice();
       } catch (err) {
         console.error('加载多数据源失败:', err);
         loadingDiv.innerHTML = `<p class="text-red-500 text-center">❌ 加载资源失败：${err.message || '未知错误'}</p>`;
@@ -314,25 +477,15 @@
       html += '</div>';
       typeNav.innerHTML = html;
 
+      // 为分类按钮添加点击事件监听器
       typeNav.querySelectorAll('button').forEach(btn => {
         btn.addEventListener('click', () => {
-          const type = btn.dataset.type;
-          const today = getBeijingDate();
-          const lastVerified = localStorage.getItem('lastVerifiedListDate');
-
-          if (lastVerified === today) {
-            showListView(type);
-          } else {
-            const record = ACCESS_MAP[today];
-            if (!record) {
-              alert(`系统未配置 ${today} 的访问码，请稍后再试。`);
-              return;
-            }
-            document.getElementById('linkDate').textContent = today;
-            document.getElementById('accessLink').href = record.link;
-            accessModal.style.display = 'flex';
-            accessModal.dataset.pendingType = type;
+          if (!isVerified) {
+            // 如果未验证，点击无效
+            return;
           }
+          const type = btn.dataset.type;
+          showListView(type);
         });
       });
     }
@@ -341,9 +494,101 @@
       currentListType = type;
       document.getElementById('listTitle').textContent = `${type}清单`;
       mainContainer.classList.add('hidden');
+      navSection.classList.add('hidden');
       listView.classList.remove('hidden');
+
+      // ✅ 绑定清单页搜索事件
+      listSearchBtn.removeEventListener('click', handleListSearch); // 防止重复绑定
+      listSearchBtn.addEventListener('click', handleListSearch);
+      listSearchInput.removeEventListener('keypress', handleListSearchOnEnter); // 防止重复绑定
+      listSearchInput.addEventListener('keypress', handleListSearchOnEnter);
+
       renderListPage(1);
     }
+
+    // ✅ 清单页内搜索函数
+    function handleListSearch() {
+        if (!isVerified) return;
+        const rawQuery = listSearchInput.value.trim();
+        if (!rawQuery) {
+            // 如果清空搜索框，则恢复显示当前分类的所有内容
+            renderListPage(1);
+            return;
+        }
+        const query = cleanQuery(rawQuery);
+        if (!query) {
+            listSearchInput.value = '';
+            renderListPage(1);
+            return;
+        }
+
+        const items = resources.filter(item => item.type === currentListType);
+        const hits = items.filter(item => {
+            const title = (item.title || '').toLowerCase().replace(/[\s\u2000-\u206F]/g, '');
+            const q = query.toLowerCase().replace(/[\s\u2000-\u206F]/g, '');
+            return title.includes(q);
+        });
+
+        // 构建分组数据
+        const groups = {};
+        hits.forEach(item => {
+            const initial = (item.initial || '#').toUpperCase();
+            if (!groups[initial]) groups[initial] = [];
+            groups[initial].push(item);
+        });
+
+        const sortedInitials = Object.keys(groups).sort();
+        const allEntries = [];
+        sortedInitials.forEach(initial => {
+            allEntries.push({ type: 'header', initial });
+            groups[initial].forEach(item => allEntries.push({ type: 'item', data: item }));
+        });
+
+        // 渲染结果
+        renderGroupedEntries(allEntries);
+        // 搜索结果不显示分页
+        document.getElementById('listPagination').classList.add('hidden');
+    }
+
+    // ✅ 清单页内搜索回车事件
+    function handleListSearchOnEnter(e) {
+        if (e.key === 'Enter') {
+            handleListSearch();
+        }
+    }
+
+    // ✅ 渲染分组条目（用于搜索和分页）
+    function renderGroupedEntries(entries) {
+        let html = '';
+        entries.forEach(entry => {
+            if (entry.type === 'header') {
+                html += `<h3 class="text-xl font-bold text-gray-700 border-l-4 border-blue-500 pl-2">${entry.initial}</h3>`;
+            } else {
+                const item = entry.data;
+                const links = getRandomValidLinks(item);
+
+                html += `<div class="bg-white p-4 rounded-lg shadow">
+                    <h4 class="font-semibold text-blue-600">${item.title}</h4>`;
+
+                if (links.length > 0) {
+                    const link = links[0];
+                    html += `<a href="${link.mainUrl}" target="_blank" class="block mt-1 text-green-600">${link.mainText}</a>`;
+                    // 🔥 修改：蓝奏云链接显示方式
+                    if (link.hasLz && link.mainType === 'lz' && link.codeUrl) {
+                        // 直接渲染一个链接到分享页的“提取码”文字
+                        html += `<a href="${link.codeUrl}" target="_blank" class="block mt-1 text-green-600">提取码</a>`;
+                    }
+                } else {
+                    html += `<p class="text-gray-500 mt-1">暂无有效链接</p>`;
+                }
+
+                html += `</div>`;
+            }
+        });
+
+        document.getElementById('groupedList').innerHTML = html || '<p class="text-center text-gray-500">未找到相关资源</p>';
+    }
+
 
     function renderListPage(page) {
       const items = resources.filter(item => item.type === currentListType);
@@ -366,32 +611,7 @@
       const start = (page - 1) * ITEMS_PER_PAGE;
       const pageEntries = allEntries.slice(start, start + ITEMS_PER_PAGE);
 
-      let html = '';
-      pageEntries.forEach(entry => {
-        if (entry.type === 'header') {
-          html += `<h3 class="text-xl font-bold text-gray-700 border-l-4 border-blue-500 pl-2">${entry.initial}</h3>`;
-        } else {
-          const item = entry.data;
-          const links = getRandomValidLinks(item);
-
-          html += `<div class="bg-white p-4 rounded-lg shadow">
-            <h4 class="font-semibold text-blue-600">${item.title}</h4>`;
-
-          if (links.length > 0) {
-            const link = links[0];
-            html += `<a href="${link.mainUrl}" target="_blank" class="block mt-1 text-green-600">${link.mainText}</a>`;
-            if (link.hasLz && link.mainType === 'lz' && link.shareUrl) {
-              html += `<a href="${link.shareUrl}" target="_blank" class="block mt-1 text-green-600">提取码: ${link.shareUrl}</a>`;
-            }
-          } else {
-            html += `<p class="text-gray-500 mt-1">暂无有效链接</p>`;
-          }
-
-          html += `</div>`;
-        }
-      });
-
-      document.getElementById('groupedList').innerHTML = html || '<p class="text-center text-gray-500">暂无资源</p>';
+      renderGroupedEntries(pageEntries);
       renderPagination(page, totalPages);
     }
 
@@ -419,111 +639,30 @@
 
       div.innerHTML = html;
       div.querySelectorAll('button').forEach(btn => {
-        btn.addEventListener('click', () => renderListPage(parseInt(btn.dataset.page)));
+        btn.addEventListener('click', () => {
+          if (!isVerified) return; // 确保分页按钮也受验证保护
+          renderListPage(parseInt(btn.dataset.page));
+        });
       });
     }
 
     document.getElementById('backBtn').addEventListener('click', () => {
       listView.classList.add('hidden');
       mainContainer.classList.remove('hidden');
+      navSection.classList.remove('hidden');
+      if (!isVerified) {
+        // 如果返回时仍未验证，重新显示遮罩
+        showOverlay();
+      }
+      // ✅ 返回时清空搜索框
+      listSearchInput.value = '';
     });
 
-    document.getElementById('verifyBtn').addEventListener('click', () => {
-      const input = document.getElementById('accessCodeInput').value.trim();
-      const today = getBeijingDate();
-      const record = ACCESS_MAP[today];
-      const errorText = document.getElementById('errorText');
-
-      if (!record) {
-        errorText.textContent = `系统错误：未配置 ${today} 的访问码。`;
-        errorText.classList.remove('hidden');
-        return;
-      }
-
-      if (input === record.code) {
-        localStorage.setItem('lastVerifiedListDate', today);
-        accessModal.style.display = 'none';
-        document.getElementById('accessCodeInput').value = '';
-        errorText.classList.add('hidden');
-
-        const pendingType = accessModal.dataset.pendingType;
-        if (pendingType) {
-          showListView(pendingType);
-          delete accessModal.dataset.pendingType;
-        }
-      } else {
-        errorText.textContent = '访问码错误，请重新输入。';
-        errorText.classList.remove('hidden');
-      }
-    });
-
-    function performActualSearch(rawQuery) {
-      if (!resources || !rawQuery.trim()) {
-        resultsDiv.innerHTML = '';
-        noResultsDiv.classList.add('hidden');
-        return;
-      }
-
-      const query = cleanQuery(rawQuery);
-      if (!query) {
-        resultsDiv.innerHTML = '<p class="text-gray-500 text-center">请输入有效关键词</p>';
-        noResultsDiv.classList.add('hidden');
-        return;
-      }
-
-      const hits = resources.filter(item => {
-        const title = (item.title || '').toLowerCase().replace(/[\s\u2000-\u206F]/g, '');
-        const q = query.toLowerCase().replace(/[\s\u2000-\u206F]/g, '');
-        return title.includes(q);
-      });
-
-      resultsDiv.innerHTML = '';
-      noResultsDiv.classList.toggle('hidden', hits.length > 0);
-
-      if (hits.length === 0) {
-        noResultsDiv.classList.remove('hidden');
-      } else {
-        hits.forEach(item => {
-          const links = getRandomValidLinks(item);
-          let html = `<div class="bg-white p-5 rounded-xl shadow hover:shadow-md transition">
-            <h2 class="text-xl font-semibold text-blue-600">${item.title}</h2>`;
-
-          if (links.length > 0) {
-            const link = links[0];
-            html += `<a href="${link.mainUrl}" target="_blank" class="block mt-2 text-green-600">${link.mainText}</a>`;
-            if (link.hasLz && link.mainType === 'lz' && link.shareUrl) {
-              html += `<a href="${link.shareUrl}" target="_blank" class="block mt-1 text-green-600">提取码: ${link.shareUrl}</a>`;
-            }
-          } else {
-            html += `<p class="text-gray-500 mt-2">暂无有效链接</p>`;
-          }
-
-          html += '</div>';
-          resultsDiv.innerHTML += html;
-        });
-      }
-    }
-
-    function handleUserSearch() {
-      const query = searchInput.value.trim();
-      if (!query) {
-        resultsDiv.innerHTML = '';
-        noResultsDiv.classList.add('hidden');
-        return;
-      }
-      performActualSearch(query);
-    }
-
-    searchBtn.addEventListener('click', handleUserSearch);
-    searchInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        handleUserSearch();
-      }
-    });
-
+    // 页面加载完成后初始化
     window.addEventListener('DOMContentLoaded', () => {
-      loadData();
+        initPage();
     });
+
   </script>
 </body>
 </html>
